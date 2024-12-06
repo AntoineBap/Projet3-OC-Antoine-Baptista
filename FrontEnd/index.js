@@ -1,13 +1,17 @@
 async function getWorks(apiUrl) {
-  const response = await fetch(apiUrl, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-``
-  const worksData = await response.json();
-  return worksData;
+  try {
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    const worksData = await response.json();
+    return worksData;
+  } catch (error) {
+    console.error("Error fetching works:", error);
+    return [];
+  }
 }
 
 function renderWorks(worksData) {
@@ -25,18 +29,20 @@ function renderWorks(worksData) {
 }
 
 async function getCategories(apiUrl) {
-  const response = await fetch(apiUrl, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-``
-  const categoriesData = await response.json();
-  return categoriesData;
+  try {
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    const categoriesData = await response.json();
+    return categoriesData;
+  } catch (error) {
+    console.error("Error fetching categories:", error);
+    return [];
+  }
 }
-
-
 function createBtn(categories) {
   const filterBar = document.getElementById("filterbar");
 
@@ -46,7 +52,7 @@ function createBtn(categories) {
   allBtn.innerHTML = "<p>Tous</p>";
   filterBar.appendChild(allBtn);
 
-  // Boutons pour chaque catégorie
+  // Boutons pour chaque categorie
   categories.forEach(category => {
     const btn = document.createElement("button");
     btn.className = "filterBtn";
@@ -74,7 +80,7 @@ function filterWorks(categoryId, works) {
 function activeBtns(categories){
   const buttons = document.querySelectorAll(".filterbar .filterBtn");
     
-    // les boutons recuperent la classe '.active' a chaque clic pour recuperer les effets CSS assignés
+    // les boutons recuperent la classe '.active' a chaque clic pour recuperer les effets CSS assignes
     buttons.forEach((button) => {
       button.addEventListener("click", () => {
         buttons.forEach((btn) => btn.classList.remove("active"));
@@ -83,23 +89,30 @@ function activeBtns(categories){
     });
   }
 
-async function getBearerToken(apiUrlLogin) {
-    const response = await fetch(apiUrlLogin, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: "sophie.bluel@test.tld",
-        password: "S0phie",
-      }),
-    });
-
-    const data = await response.json();
-    const bearerToken = data.token;
-    return bearerToken;
-}
-
+  async function getBearerToken(apiUrlLogin) {
+    try {
+      const response = await fetch(apiUrlLogin, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: "sophie.bluel@test.tld",
+          password: "S0phie",
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to fetch bearer token");
+      }
+  
+      const data = await response.json();
+      return data.token;
+    } catch (error) {
+      console.error("Error fetching bearer token:", error);
+      return null;
+    }
+  }
 
 function displayWorksInModal(works) {
   const modalWorksContainer = document.getElementById("modalWorksContainer");
@@ -168,20 +181,26 @@ function reattachDeleteEventListeners(bearerToken, apiUrlDelete) {
 }
 
 async function deleteWork(bearerToken, apiUrlDelete, workId) {
-  const response = await fetch(`${apiUrlDelete}${workId}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${bearerToken}`,
-      "Content-Type": "application/json",
-    },
-  });
+  try {
+    const response = await fetch(`${apiUrlDelete}${workId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${bearerToken}`,
+        "Content-Type": "application/json",
+      },
+    });
 
-  works = works.filter(work => work.id !== parseInt(workId, 10)); //supprime le work
-  
-  renderWorks(works);
-  displayWorksInModal(works);// actualise la gallery et la modale
-  
-  reattachDeleteEventListeners(bearerToken, apiUrlDelete); // re-attache les eventListener delete
+    if (!response.ok) {
+      throw new Error(`Failed to delete work with ID: ${workId}`);
+    }
+
+    works = works.filter((work) => work.id !== parseInt(workId, 10));
+    renderWorks(works);
+    displayWorksInModal(works);
+    reattachDeleteEventListeners(bearerToken, apiUrlDelete);
+  } catch (error) {
+    console.error("Error deleting work:", error);
+  }
 }
 
 function addPhotoCategorySelector(categories){
@@ -200,19 +219,18 @@ function addPhotoCategorySelector(categories){
 }
 
 function addPhotoPreview() {
-  const photoInput = document.getElementById("photoInput"); // Définition de photoInput
+  const photoInput = document.getElementById("photoInput"); 
   const photoPreview = document.getElementById("photoPreview");
   const imageInputContent = document.getElementById("imageInputContent");
 
   photoInput.addEventListener("change", (event) => {
     const file = event.target.files[0];
-    console.log(file); // Pour vérifier si le fichier est bien récupéré
 
     if (file) {
       const reader = new FileReader();
 
       reader.onload = function (e) {
-        // Ajout de la photo dans l'input dédié 
+        // Ajout de la photo dans l'input
         photoPreview.src = e.target.result;
         photoPreview.style.display = "block";
         imageInputContent.style.display = "none";
@@ -259,76 +277,99 @@ function resetForm() {
 }
 
 async function submitWork(apiUrl, bearerToken, apiUrlDelete) {
-  const photoInput = document.getElementById("photoInput");
-  const photoTitleInput = document.getElementById("photoTitle");
-  const photoCategorySelect = document.getElementById("photoCategory");
+  try {
+    const photoInput = document.getElementById("photoInput");
+    const photoTitleInput = document.getElementById("photoTitle");
+    const photoCategorySelect = document.getElementById("photoCategory");
 
-  const file = photoInput.files[0]; // récupère l'image
+    const file = photoInput.files[0];
+    if (!file) {
+      throw new Error("No file selected");
+    }
 
-  const formData = new FormData();
-  formData.append("category", photoCategorySelect.value);
-  formData.append("image", file);
-  formData.append("title", photoTitleInput.value);
+    const formData = new FormData();
+    formData.append("category", photoCategorySelect.value);
+    formData.append("image", file);
+    formData.append("title", photoTitleInput.value);
 
-  const response = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${bearerToken}`,
-    },
-    body: formData,
-  });
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${bearerToken}`,
+      },
+      body: formData,
+    });
 
-  const newWork = await response.json();// recupere la data du nouveau work
-  works.push(newWork);// ajoute le nv work a la liste 
-  renderWorks(works);// refresh la gallery
-  displayWorksInModal(works)
-  reattachDeleteEventListeners(bearerToken, apiUrlDelete)// permet de pouvoir delete un work apres un update sans avoir a F5
-  resetForm();
+    if (!response.ok) {
+      throw new Error("Failed to submit work");
+    }
+
+    const newWork = await response.json();
+    works.push(newWork);
+    renderWorks(works);
+    displayWorksInModal(works);
+    reattachDeleteEventListeners(bearerToken, apiUrlDelete);
+    resetForm();
+  } catch (error) {
+    console.error("Error submitting work:", error);
+  }
 }
 
 let works = []; // passage en global pour que les fonctions dynamiques puissent modifier directement la liste (delete, filter, submit)
 
 document.addEventListener("DOMContentLoaded", async () => {
-  
-  const baseUrl = "http://localhost:5678/api/";
-  const apiUrlWorks = `${baseUrl}works`;
-  const apiUrlCategories = `${baseUrl}categories`;
-  const apiUrlLogin = `${baseUrl}users/login`;
-  const apiUrlDelete = `${baseUrl}works/`;
-  const apiUrlSend = `${baseUrl}works`
+  try {
+    const baseUrl = "http://localhost:5678/api/";
+    const apiUrlWorks = `${baseUrl}works`;
+    const apiUrlCategories = `${baseUrl}categories`;
+    const apiUrlLogin = `${baseUrl}users/login`;
+    const apiUrlDelete = `${baseUrl}works/`;
+    const apiUrlSend = `${baseUrl}works`;
 
     const bearerToken = await getBearerToken(apiUrlLogin);
-    works = await getWorks(apiUrlWorks); // Stocke la liste des œuvres dans la variable globale
+    if (!bearerToken) {
+      throw new Error("Bearer token is null. Cannot proceed.");
+    }
+
+    works = await getWorks(apiUrlWorks);
     renderWorks(works);
 
     const categories = await getCategories(apiUrlCategories);
     createBtn(categories);
 
-    const filterBtns = document.querySelectorAll('.filterBtn');
-    filterBtns.forEach(filterBtn => {
+    const filterBtns = document.querySelectorAll(".filterBtn");
+    filterBtns.forEach((filterBtn) => {
       filterBtn.addEventListener("click", (event) => {
-        filterClick(event, works);
-        activeBtns(categories);
+        try {
+          filterClick(event, works);
+          activeBtns(categories);
+        } catch (error) {
+          console.error("Error handling filter click:", error);
+        }
       });
     });
 
     displayWorksInModal(works);
     modalTriggers();
 
-    document.querySelectorAll('.deleteButton').forEach(button => {
-      button.addEventListener('click', (event) => {
+    document.querySelectorAll(".deleteButton").forEach((button) => {
+      button.addEventListener("click", (event) => {
         const workId = getButtonId(event);
         deleteWork(bearerToken, apiUrlDelete, workId);
       });
     });
 
     addPhotoCategorySelector(categories);
-    addPhotoPreview()
+    addPhotoPreview();
     const submitPhotoBtn = document.getElementById("submitPhotoBtn");
     submitPhotoBtn.addEventListener("click", () => {
       submitWork(apiUrlSend, bearerToken, apiUrlDelete);
     });
-
+  } catch (error) {
+    console.error("Error initializing application:", error);
+  }
 });
+
+
 
 
